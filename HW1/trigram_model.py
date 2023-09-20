@@ -36,6 +36,7 @@ def get_ngrams(sequence, n):
     This should work for arbitrary values of n >= 1 
     """
 
+<<<<<<< HEAD
     sequence = ["START"] * (n) + sequence + ["END"] if n == 1 else ["START"] * (n-1) + sequence + ["END"]
 
     res = []
@@ -45,6 +46,9 @@ def get_ngrams(sequence, n):
         res.append(ngram)
 
     return res
+=======
+    return []
+>>>>>>> bd2a5e9adb8cc7880fb0f6d49ff83ec513b78c80
 
 
 class TrigramModel(object):
