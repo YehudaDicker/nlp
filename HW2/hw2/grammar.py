@@ -76,10 +76,28 @@ test_files = ['valid_grammar.cfg', 'invalid_grammar.cfg', 'invalid_prob.cfg']
 expected_results = [True, False, False]
 
 # Run the tests
-test_grammars(test_files, expected_results)
+#test_grammars(test_files, expected_results)
 
-''' 
+
 if __name__ == "__main__":
-    with open(sys.argv[1],'r') as grammar_file:
-        grammar = Pcfg(grammar_file)
-'''   
+    if len(sys.argv) < 2:
+        print(f"Usage: python <script_name> <grammar_file>")
+    else:
+        try:
+            with open(sys.argv[1],'r') as grammar_file:
+                grammar = Pcfg(grammar_file)
+                is_valid = grammar.verify_grammar()
+                if is_valid:
+                    print(f"Error: The grammar {sys.argv[1]} is a valid PCFG in CNF.")
+                else:
+                    print(f"Error: The grammar {sys.argv[1]} is not a valid PCFG in CNF.")
+        except FileNotFoundError:
+            print(f"Error: The fi;le {sys.argv[1]} was not found.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}.")
+        
+
+
+
+
+

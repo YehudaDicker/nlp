@@ -97,17 +97,74 @@ class CkyParser(object):
         return False
         """
         # TODO, part 2
-        return False 
+
+        n = len(tokens)
+        table = [[[] for j in range (n+1)] for i in range(n)]
+
+        # Populate diagonal of table
+        for i, token in enumerate(tokens):
+            table[i][i+1] = [lhs for lhs, rhs, prob in self.grammar.rhs_to_rules[(token,)] if prob > 0]
+
+        for span in range(2, n+1):
+            for i in range(n-span+1):
+                j = i + span
+                for k in range(i+1, j):
+                    for rule in self.grammar.lhs_to_rules.keys():
+                        for b in table[i][k]:
+                            for c in table[k][j]:
+                                if (b,c) in self.grammar.rhs_to_rules:
+                                    for a, rhs, prob in self.grammar.rhs_to_rules[(b,c)]:
+                                        if a not in table[i][j] and prob > 0:
+                                            table[i][j].append(a)
+        return self.grammar.startsymbol in table[0][n]
        
     def parse_with_backpointers(self, tokens):
         """
         Parse the input tokens and return a parse table and a probability table.
         """
         # TODO, part 3
-        table= None
-        probs = None
-        return table, probs
+        
+        n = len(tokens)
 
+        # Initialize tables
+        backpointer_table = defaultdict(dict)
+        probability_table = defaultdict(dict)
+
+        # Base case tables:
+        for i, token in enumerate(tokens):
+            rules = self.grammar.rhs_to_rules.get((token,), [])
+            for lhs, rhs, prob in rules:
+                if prob > 0:
+                    backpointer_table[(i, i+1)][lhs] = token
+                    probability_table[(i, i+1)][lhs] = math.log(prob)
+        
+        #print(list(self.grammar.lhs_to_rules.values())[:3])  
+
+        # Filling rest of tables
+        for span in range(2, n+1):
+            for i in range(n-span+1):
+                j = i + span
+                for k in range(i+1, j):
+                    for rule_set in self.grammar.lhs_to_rules.values():
+                        for lhs, rhs, prob in rule_set:
+                            if len(rhs) == 2:
+                                b, c = rhs
+                                if b in backpointer_table[(i, k)] and c in backpointer_table[(k, j)]:
+                                    log_prob = math.log(prob) + probability_table[(i, k)][b] + probability_table[(k, j)][c]
+
+                                    if lhs not in probability_table[(i, j)] or log_prob > probability_table[(i, j)][lhs]:
+                                        backpointer_table[(i, j)][lhs] = ((b, i, k), (c, k, j))
+                                        probability_table[(i, j)][lhs] = log_prob
+                            elif len(rhs) == 1:
+                                b = rhs[0]
+                                if b in backpointer_table[(i, j)]:
+                                    log_prob = math.log(prob) + probability_table[(i, j)][b] 
+
+                                    if lhs not in probability_table[(i, j)] or log_prob > probability_table[(i, j)][lhs]:
+                                        backpointer_table[(i, j)][lhs] = (b, i, j)
+                                        probability_table[(i, j)][lhs] = log_prob
+                            
+        return backpointer_table, probability_table
 
 def get_tree(chart, i,j,nt): 
     """
