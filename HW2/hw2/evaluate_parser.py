@@ -1,5 +1,6 @@
-from cky import Pcfg, CkyParser, get_tree
+from cky import CkyParser, get_tree
 import sys
+from grammar import Pcfg
 
 def tokenize(line):
     tok = ''
@@ -90,7 +91,7 @@ def evaluate_parser(parser, treebank_file):
         gold_tree = parse_tree(line.strip())
         tokens = get_leafs(gold_tree)
         print("input: ",tokens)
-        chart,probs = parser.parse_with_backpointers(tokens)
+        chart, probs = parser.parse_with_backpointers(tokens)
         print("target:    ",gold_tree)
         total += 1
         if not chart: 

@@ -96,92 +96,82 @@ class CkyParser(object):
         the sentence is in the language described by the grammar. Otherwise
         return False
         """
-        # TODO, part 2
 
         n = len(tokens)
-        table = [[[] for j in range (n+1)] for i in range(n)]
+        table = {}
 
-        # Populate diagonal of table
-        for i, token in enumerate(tokens):
-            table[i][i+1] = [lhs for lhs, rhs, prob in self.grammar.rhs_to_rules[(token,)] if prob > 0]
+        for i in range(n):
+            for j in range(i, n+1): 
+                table[(i, j)] = set()
+        
+        for i in range(0, n): 
+            for key, rules in grammar.rhs_to_rules.items():
+                if tokens[i] == key[0] and len(key) == 1:
+                    for lhs in rules:
+                        table[(i, i+1)].add(lhs[0])
 
-        for span in range(2, n+1):
-            for i in range(n-span+1):
-                j = i + span
+        for length in range(2, n+1):
+            for i in range(0, n-length+1):
+                j = i + length
+                temp = set()
                 for k in range(i+1, j):
-                    for rule in self.grammar.lhs_to_rules.keys():
-                        for b in table[i][k]:
-                            for c in table[k][j]:
-                                if (b,c) in self.grammar.rhs_to_rules:
-                                    for a, rhs, prob in self.grammar.rhs_to_rules[(b,c)]:
-                                        if a not in table[i][j] and prob > 0:
-                                            table[i][j].append(a)
-        return self.grammar.startsymbol in table[0][n]
+                    for key in grammar.rhs_to_rules.keys():
+                        for rules in grammar.rhs_to_rules[key]:                       
+                            if len(rules[1]) == 2:
+                                if rules[1][0] in table[(i, k)] and rules[1][1] in table[(k, j)]: 
+                                    temp.add(rules[0])
+                    table[(i, j)] = temp
+    
+        if grammar.startsymbol in table[(0, n)]: 
+            return True
+        return False 
        
     def parse_with_backpointers(self, tokens):
+        """
+        Parse the input tokens and return a parse table and a probability table.
+        """
         n = len(tokens)
+        table = {}
+        probs = {}
 
-        # Initialize tables with None
-        backpointer_table = {(i, j): {} for i in range(n) for j in range(i, n+1)}
-        probability_table = {(i, j): {} for i in range(n) for j in range(i, n+1)}
+        for i in range(n):
+            for j in range(i, n+1): 
+                table[(i, j)] = {}
+                probs[(i, j)] = {}
+        
+        for i in range(n):  
+            rules = self.grammar.rhs_to_rules[(tokens[i],)]
+            for rule in rules:
+                    lhs = rule[0]  
+                    prob = rule[2]  
+                    table[(i, i+1)][lhs] = tokens[i]
+                    probs[(i, i+1)][lhs] = math.log2(prob)
 
-        #print("Initial Backpointer Table:", backpointer_table)
-        #print("Initial Probability Table:", probability_table)
-
-        # Base case tables
-        for i, token in enumerate(tokens):
-            rules = self.grammar.rhs_to_rules.get((token,), [])
-            if rules:
-                backpointer_table[(i, i+1)] = {}
-                probability_table[(i, i+1)] = {}
-                for lhs, rhs, prob in rules:
-                    backpointer_table[(i, i+1)][lhs] = token
-                    probability_table[(i, i+1)][lhs] = math.log(prob)
-
-        #print(f"After populating base case for token {token}:")
-        #print("Backpointer Table:", backpointer_table)
-       # print("Probability Table:", probability_table)
-
-        #print(self.grammar.rhs_to_rules)
-        # Filling the rest of the tables
-        for span in range(2, n+1):
-            for i in range(n-span+1):
-                j = i + span
+        for length in range(2, n+1):
+            for i in range(0, n-length+1):
+                j = i + length
                 for k in range(i+1, j):
-                    for rules in self.grammar.rhs_to_rules.keys():
-                        for rule in self.grammar.rhs_to_rules[rules]:
-                            #print(rule)
-                            lhs, rhs, prob = rule
-                            #print(lhs, rhs, prob )
-                            if len(rhs) == 2:
-                                b, c = rhs
-                                #print(b, c)
-                                if b in backpointer_table[(i, k)] and c in backpointer_table[(k, j)]:
-                                    log_prob = math.log(prob) + probability_table[(i, k)][b] + probability_table[(k, j)][c]
-                
-                                    if lhs not in probability_table[(i, j)] or log_prob > probability_table[(i, j)][lhs]:
-                                        backpointer_table[(i, j)][lhs] = ((b, i, k), (c, k, j))
-                                        probability_table[(i, j)][lhs] = log_prob
-                            
-        #print("Final Backpointer Table:", backpointer_table)
-        #print("Final Probability Table:", probability_table)
+                    for key in self.grammar.rhs_to_rules.keys():
+                        for rules in self.grammar.rhs_to_rules[key]:    
+                            if len(rules[1]) == 2:
+                                if rules[1][0] in table[(i, k)] and rules[1][1] in table[(k, j)]:
+                                    prob = math.log2(rules[2]) + probs[(i, k)][rules[1][0]] + probs[(k, j)][rules[1][1]]
+                                    if rules[0] not in probs[(i,j)] or prob > probs[(i, j)][rules[0]]:
+                                        backpointer = ((rules[1][0], i, k), (rules[1][1], k, j))
+                                        probs[(i, j)][rules[0]] = prob
+                                        table[(i, j)][rules[0]] = backpointer
+        return table, probs
 
-        return backpointer_table, probability_table
 
-def get_tree(chart,i,j,nt): 
+def get_tree(chart, i,j,nt): 
     """
     Return the parse-tree rooted in non-terminal nt and covering span i,j.
     """
-    # TODO: Part 4
-
-    #if (i, j) in chart and chart[(i, j)] is not None and nt in chart[(i, j)]:
-    backpointer = chart[(i, j)][nt]
-    if j == i + 1:
-        return (nt, backpointer)
-    else:
-        left_child = get_tree(chart, backpointer[0][1], backpointer[0][2], backpointer[0][0])
-        right_child = get_tree(chart, backpointer[1][1], backpointer[1][2], backpointer[1][0])
-        return (nt, left_child, right_child)
+    entry = chart[(i, j)][nt]
+    if j== i + 1:
+        return nt, entry
+    else: 
+        return (nt, get_tree(chart, entry[0][1], entry[0][2], entry[0][0]), get_tree(chart, entry[1][1], entry[1][2], entry[1][0]))
     return None 
  
        
@@ -191,8 +181,12 @@ if __name__ == "__main__":
         grammar = Pcfg(grammar_file) 
         parser = CkyParser(grammar)
         toks =['flights', 'from','miami', 'to', 'cleveland','.'] 
+        #toks = ['miami', 'flights','cleveland', 'from', 'to','.']
         #print(parser.is_in_language(toks))
         table, probs = parser.parse_with_backpointers(toks)
-        assert check_table_format(chart)
+        #print(table[0,len(toks)][grammar.startsymbol])
+        #print(probs[0,len(toks)][grammar.startsymbol])
+        print(get_tree(table, 0, len(toks), grammar.startsymbol))
+        assert check_table_format(table) 
         assert check_probs_format(probs)
         
